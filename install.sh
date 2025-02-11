@@ -4,7 +4,7 @@
 PROJECT_NAME=spt
 PYTHON=3.8
 TORCH=2.2.0
-CUDA_SUPPORTED=(11.8 12.1 12.8)
+CUDA_SUPPORTED=(11.8 12.1 12.5 12.8)
 
 
 # Recover the project's directory from the position of the install.sh
