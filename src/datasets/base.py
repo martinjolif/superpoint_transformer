@@ -21,6 +21,7 @@ from torch_geometric.nn.pool.consecutive import consecutive_cluster
 from src.data import NAG
 from src.transforms import Transform, NAGSelectByKey, NAGRemoveKeys, \
     SampleXYTiling, SampleRecursiveMainXYAxisTiling
+from src.transforms.sampling import SampleYTiling
 from src.visualization import show
 
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -229,7 +230,6 @@ class BaseDataset(InMemoryDataset):
             self.xy_tiling = None
         self.pc_tiling = pc_tiling if pc_tiling and pc_tiling >= 1 else None
         self.y_tiling = y_tiling if y_tiling and y_tiling > 1 else None 
-
         # Sanity check on the cloud ids. Ensures cloud ids are unique
         # across all stages, unless `val_mixed_in_train` or
         # `test_mixed_in_val` is True
@@ -467,7 +467,7 @@ class BaseDataset(InMemoryDataset):
             ty = self.y_tiling
             return {
                 stage: [
-                    f'{ci}___TILE_Y{y + 1}_OF_{ty}'
+                    f'{ci}__TILE_{y + 1}_OF_{ty}'
                     for ci in ids
                     for y in range(ty)]
                 for stage, ids in self.all_base_cloud_ids.items()}
@@ -495,7 +495,7 @@ class BaseDataset(InMemoryDataset):
         """IDs of the dataset clouds, based on its `stage`.
         """
         if self.stage == 'trainval':
-           ids = self.all_cloud_ids['train'] + self.all_cloud_ids['val']
+            ids = self.all_cloud_ids['train'] + self.all_cloud_ids['val']
         else:
             ids = self.all_cloud_ids[self.stage]
         return sorted(list(set(ids)))
@@ -594,7 +594,6 @@ class BaseDataset(InMemoryDataset):
         # Read the raw cloud data
         raw_ext = osp.splitext(self.raw_file_names_3d[0])[1]
         raw_path = osp.join(self.raw_dir, base_cloud_id + raw_ext)
-
         return raw_path
 
     @property
@@ -721,14 +720,11 @@ class BaseDataset(InMemoryDataset):
         # Read the raw cloud corresponding to the final processed
         # `cloud_path` and convert it to a Data object
         raw_path = self.processed_to_raw_path(cloud_path)
-        #print(raw_path)
         data = self.sanitized_read_single_raw_cloud(raw_path)
-        #print(data)
-        #print("self.xy_tiling", self.xy_tiling)
+
         # If the cloud path indicates a tiling is needed, apply it here
         if self.xy_tiling is not None:
             tile = self.get_tile_from_path(cloud_path)[0]
-            #print("tile", tile)
             data = SampleXYTiling(x=tile[0], y=tile[1], tiling=tile[2])(data)
         elif self.y_tiling is not None:
             tile = self.get_tile_from_path(cloud_path)[0]
@@ -737,11 +733,8 @@ class BaseDataset(InMemoryDataset):
             tile = self.get_tile_from_path(cloud_path)[0]
             data = SampleRecursiveMainXYAxisTiling(x=tile[0], steps=tile[1])(data)
         
-        #print("tile", tile)
-        #print(data)
         # Apply pre_transform
         if self.pre_transform is not None:
-            print(data)
             nag = self.pre_transform(data)
         else:
             nag = NAG([data])
@@ -780,10 +773,12 @@ class BaseDataset(InMemoryDataset):
             prefix = path.replace(suffix, '')
             return (x - 1, y - 1, (x_tiling, y_tiling)), prefix, suffix
         
-        out_reg = re.search('__TILE_Y(\d+)_OF_(\d+)', path)
+        # Search the Y tiling suffix pattern
+        # To remove if you want to use PC Tiling
+        out_reg = re.search('__TILE_(\d+)_OF_(\d+)', path)
         if out_reg is not None:
             y, y_tiling = [int(g) for g in out_reg.groups()]
-            suffix = f'__TILE_Y{y}_OF_-{y_tiling}'
+            suffix = f'__TILE_{y}_OF_{y_tiling}'
             prefix = path.replace(suffix, '')
             return (y - 1, y_tiling), prefix, suffix
 
