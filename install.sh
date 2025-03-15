@@ -3,8 +3,8 @@
 # Local variables
 PROJECT_NAME=spt
 PYTHON=3.8
-TORCH=2.2.0
-CUDA_SUPPORTED=(11.8 12.1)
+TORCH=2.4.0
+CUDA_SUPPORTED=(12.4)
 
 
 # Recover the project's directory from the position of the install.sh

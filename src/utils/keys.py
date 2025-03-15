@@ -23,6 +23,7 @@ POINT_FEATURES = [
     'volume',
     'curvature',
     'intensity',
+    'reflectance',
     'pos_room']
 
 SEGMENT_BASE_FEATURES = [

@@ -87,6 +87,7 @@ feat_size:
     elevation: 1
     size: 1
     intensity: 1
+    reflectance: 1
 
     log_pos: 3
     log_pos_room: 3
