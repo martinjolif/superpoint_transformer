@@ -55,7 +55,7 @@ TILES = {
 #                                Labels                                #
 ########################################################################
 
-PARISLILLE_NUM_CLASSES = 9
+PARISLILLE_NUM_CLASSES = 10
 
 ID2TRAINID = np.asarray([0,1,2,3,4,5,6,7,8,9])
 
@@ -72,16 +72,17 @@ CLASS_NAMES = [
     'Natural Vegetation']
 
 CLASS_COLORS = np.asarray([
-    [243, 214, 171],  # sunset
-    [ 70, 115,  66],  # fern green
-    [233,  50, 239],
-    [243, 238,   0],
-    [190, 153, 153],
-    [  0, 233,  11],
-    [239, 114,   0],
-    [214,   66,  54],  # vermillon
-    [  0,   8, 116],
-    [  20,   20, 20]])
+    [200, 200, 200],  # Unclassified (gray)
+    [70, 115, 66],    # Ground (earthy green)
+    [233, 50, 239],   # Building (bright magenta)
+    [243, 238, 0],    # Pole, Road Sign, Traffic Light (yellow)
+    [190, 153, 153],  # Bollard, Small Pole (light brown)
+    [0, 233, 11],     # Trash Can (bright green)
+    [239, 114, 0],    # Barrier (orange)
+    [214, 66, 54],    # Pedestrian (red)
+    [0, 8, 116],      # Car (dark blue)
+    [20, 160, 20]     # Natural Vegetation (deep green)
+])
 
 # For instance segmentation
 #MIN_OBJECT_SIZE = 100

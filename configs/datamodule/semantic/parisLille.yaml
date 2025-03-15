@@ -6,7 +6,7 @@ _target_: src.datamodules.parisLille.PARISLILLEDataModule
 
 # These parameters are not actually used by the DataModule, but are used
 # here to facilitate model parameterization with config interpolation
-num_classes: 9
+num_classes: 10
 stuff_classes: []
 trainval: True
 val_on_test: True
