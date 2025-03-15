@@ -159,6 +159,7 @@ class BaseDataset(InMemoryDataset):
             save_pos_dtype: torch.dtype = torch.float,
             save_fp_dtype: torch.dtype = torch.half,
             xy_tiling: int = None,
+            y_tiling: int = None,
             pc_tiling: int = None,
             val_mixed_in_train: bool = False,
             test_mixed_in_val: bool = False,
@@ -215,6 +216,9 @@ class BaseDataset(InMemoryDataset):
         # steps used. Hence, 2**pc_tiling tiles will be created.
         assert xy_tiling is None or pc_tiling is None, \
             "Cannot apply both XY and PC tiling, please choose only one."
+        assert xy_tiling is None or y_tiling is None
+        assert y_tiling is None or pc_tiling is None
+        
         if xy_tiling is None:
             self.xy_tiling = None
         elif isinstance(xy_tiling, int):
@@ -224,6 +228,7 @@ class BaseDataset(InMemoryDataset):
         else:
             self.xy_tiling = None
         self.pc_tiling = pc_tiling if pc_tiling and pc_tiling >= 1 else None
+        self.y_tiling = y_tiling if y_tiling and y_tiling > 1 else None 
 
         # Sanity check on the cloud ids. Ensures cloud ids are unique
         # across all stages, unless `val_mixed_in_train` or
@@ -457,6 +462,15 @@ class BaseDataset(InMemoryDataset):
                     for ci in ids
                     for x, y in product(range(tx), range(ty))]
                 for stage, ids in self.all_base_cloud_ids.items()}
+        
+        if self.y_tiling is not None:
+            ty = self.y_tiling
+            return {
+                stage: [
+                    f'{ci}___TILE_Y{y + 1}_OF_{ty}'
+                    for ci in ids
+                    for y in range(ty)]
+                for stage, ids in self.all_base_cloud_ids.items()}
 
         if self.pc_tiling is not None:
             return {
@@ -472,7 +486,7 @@ class BaseDataset(InMemoryDataset):
     def id_to_base_id(self, id: str) -> str:
         """Given an ID, remove the tiling indications, if any.
         """
-        if self.xy_tiling is None and self.pc_tiling is None:
+        if self.xy_tiling is None and self.pc_tiling is None and self.y_tiling is None:
             return id
         return self.get_tile_from_path(id)[1]
 
@@ -707,18 +721,27 @@ class BaseDataset(InMemoryDataset):
         # Read the raw cloud corresponding to the final processed
         # `cloud_path` and convert it to a Data object
         raw_path = self.processed_to_raw_path(cloud_path)
+        #print(raw_path)
         data = self.sanitized_read_single_raw_cloud(raw_path)
-
+        #print(data)
+        #print("self.xy_tiling", self.xy_tiling)
         # If the cloud path indicates a tiling is needed, apply it here
         if self.xy_tiling is not None:
             tile = self.get_tile_from_path(cloud_path)[0]
+            #print("tile", tile)
             data = SampleXYTiling(x=tile[0], y=tile[1], tiling=tile[2])(data)
+        elif self.y_tiling is not None:
+            tile = self.get_tile_from_path(cloud_path)[0]
+            data = SampleYTiling(y=tile[0], tiling=tile[1])(data)
         elif self.pc_tiling is not None:
             tile = self.get_tile_from_path(cloud_path)[0]
             data = SampleRecursiveMainXYAxisTiling(x=tile[0], steps=tile[1])(data)
-
+        
+        #print("tile", tile)
+        #print(data)
         # Apply pre_transform
         if self.pre_transform is not None:
+            print(data)
             nag = self.pre_transform(data)
         else:
             nag = NAG([data])
@@ -756,6 +779,13 @@ class BaseDataset(InMemoryDataset):
             suffix = f'__TILE_{x}-{y}_OF_{x_tiling}-{y_tiling}'
             prefix = path.replace(suffix, '')
             return (x - 1, y - 1, (x_tiling, y_tiling)), prefix, suffix
+        
+        out_reg = re.search('__TILE_Y(\d+)_OF_(\d+)', path)
+        if out_reg is not None:
+            y, y_tiling = [int(g) for g in out_reg.groups()]
+            suffix = f'__TILE_Y{y}_OF_-{y_tiling}'
+            prefix = path.replace(suffix, '')
+            return (y - 1, y_tiling), prefix, suffix
 
         # Search the PC tiling suffix pattern
         out_reg = re.search('__TILE_(\d+)_OF_(\d+)', path)

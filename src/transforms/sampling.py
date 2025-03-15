@@ -138,9 +138,10 @@ class GridSampling3D(Transform):
                     "doesn't have the size of num_nodes, it won't be shuffled")
 
     def _process(self, data_in):
+        print(data_in)
         # In-place option will modify the input Data object directly
         data = data_in if self.inplace else data_in.clone()
-
+      
         # If the aggregation mode is 'last', shuffle the points order.
         # Note that voxelization of point attributes will be stochastic
         if self.mode == 'last':
@@ -151,6 +152,7 @@ class GridSampling3D(Transform):
 
         # Match each point with a voxel identifier
         if 'batch' not in data:
+            print(coords)
             cluster = grid_cluster(coords, torch.ones(3, device=coords.device))
         else:
             cluster = voxel_grid(coords, data.batch, 1)
@@ -371,6 +373,35 @@ class SampleXYTiling(Transform):
 
         # Select only the points in the desired tile
         idx = torch.where((xy[:, 0] == self.x) & (xy[:, 1] == self.y))[0]
+
+        return data.select(idx)[0]
+    
+class SampleYTiling(Transform):
+    """Tile the input Data along the Y-axis and select only a given
+    tile. This is useful to reduce the size of very large clouds at
+    preprocessing time.
+
+    :param y: int
+        y coordinate of the sample in the tiling grid
+    :param tiling: int
+        Number of tiles in the Y direction
+    """
+
+    def __init__(self, y=0, tiling=2):
+        assert 0 <= y < tiling
+        self.tiling = tiling
+        self.y = y
+
+    def _process(self, data):
+        # Compute the y coordinates in the tiling grid, for each point
+        y = data.pos[:, 1].clone()  # Extract the y-coordinates
+        y -= y.min()  # Normalize y to start from 0
+        y /= y.max()  # Scale y to the range [0, 1]
+        y = y.clip(min=0, max=1) * self.tiling  # Scale to the number of tiles
+        y = y.long()  # Convert to integer tile indices
+
+        # Select only the points in the desired tile along the y-axis
+        idx = torch.where(y == self.y)[0]
 
         return data.select(idx)[0]
 
