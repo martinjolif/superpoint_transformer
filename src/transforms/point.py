@@ -289,7 +289,6 @@ class GroundElevation(Transform):
     def _process(self, data):
         # Recover the point positions
         pos = data.pos
-
         # Initialize a mask for the filtering out as many non-ground
         # points as possible, to facilitate the subsequent search of the
         # ground surface in the point cloud
@@ -321,7 +320,11 @@ class GroundElevation(Transform):
         # that there are mostly ground points in there, but can't be
         # 100% sure
         pos_trimmed = pos[mask]
-
+        
+        #avoid having a to big mask
+        if pos_trimmed.shape[0] <= 1:
+            pos_trimmed = pos
+        
         # Fit a model to the trimmed points
         if self.model == 'ransac':
             model = single_plane_model(pos_trimmed, **self.kwargs)
